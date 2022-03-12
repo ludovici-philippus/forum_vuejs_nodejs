@@ -1,7 +1,8 @@
 <template>
   <div class="form-group">
-    <label :for="nome">{{ label }}</label>
-    <input :type="type" :name="nome" :id="nome" :placeholder="placeholder" />
+    <label v-if="is_input" :for="nome">{{ label }}</label>
+    <input v-if="is_input" :type="type" :name="nome" :id="nome" :placeholder="placeholder" />
+    <textarea v-else :name="nome" :id="nome" :placeholder="placeholder" />
   </div>
 </template>
 
@@ -9,10 +10,7 @@
 export default {
   name: 'InputComponent',
   props: {
-    is_input: {
-      type: Boolean,
-      default: true,
-    },
+    is_input: Boolean,
     nome: String,
     label: String,
     placeholder: String,
@@ -32,5 +30,14 @@ input {
   padding-left: 4px;
   margin-top: 4px;
   margin-bottom: 8px;
+}
+textarea {
+  width: 100%;
+  height: 144px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  resize: vertical;
 }
 </style>

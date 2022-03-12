@@ -89,15 +89,76 @@ app.post("/criar-topico", async (req, res) => {
       const urlSlug = require('url-slug');
       const slug_topico = urlSlug(topico);
       const sql = await db.connect();
-      await sql.execute(
-        'INSERT INTO `tb_topicos` VALUES (null, ?, ?)',
-        [topico, slug_topico]
+
+      const [topico_quantidade] = await sql.execute(
+        'SELECT * FROM `tb_topicos` WHERE slug=?',
+        [slug_topico]
       );
-      res.jsonp({ criado_topico: true });
+
+      if (topico_quantidade.length != 0)
+        res.jsonp({ criado_topico: false });
+      else {
+        await sql.execute(
+          'INSERT INTO `tb_topicos` VALUES (null, ?, ?)',
+          [topico, slug_topico]
+        );
+        res.jsonp({ criado_topico: true });
+      }
     }
   } catch (err) {
     res.jsonp({ criado_topico: false });
   }
+});
+
+app.get("/get-topicos", async (req, res) => {
+  const sql = await db.connect();
+  const [topicos] = await sql.execute(
+    'SELECT * FROM `tb_topicos`'
+  );
+  res.jsonp(topicos)
+});
+
+app.post("/get-topico", async (req, res) => {
+  const slug_topico = req.body.slug;
+  const sql = await db.connect();
+  const [topico] = await sql.execute(
+    'SELECT * FROM `tb_topicos` WHERE slug=?',
+    [slug_topico]
+  );
+  res.jsonp(topico);
+});
+
+app.post("/get-posts", async (req, res) => {
+  const slug_topico = req.body.slug_topico;
+  const sql = await db.connect();
+  const [posts] = await sql.execute(
+    'SELECT * FROM `tb_posts` WHERE slug_topico=?',
+    [slug_topico]
+  );
+  res.jsonp(posts);
+});
+
+app.post("/criar-post", async (req, res) => {
+  const urlSlug = require('url-slug');
+
+  const nome = req.body.nome;
+  const conteudo = req.body.conteudo;
+  const slug_topico = req.body.slug_topico;
+  const slug = urlSlug(nome);
+
+  const sql = await db.connect();
+  const [post_exists] = await sql.execute(
+    'SELECT * FROM `tb_posts` WHERE slug=?',
+    [slug]
+  );
+  if (post_exists.length == 0) {
+    await sql.execute(
+      'INSERT INTO `tb_posts` VALUES (null, ?, ?, ?, ?)',
+      [nome, conteudo, slug_topico, slug]
+    );
+    res.jsonp({ post_criado: true });
+  } else
+    res.jsonp({ post_criado: false });
 })
 
 app.listen(5000, () => {

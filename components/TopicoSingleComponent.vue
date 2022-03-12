@@ -1,9 +1,9 @@
 <template>
-  <div class="container">
-    <NuxtLink :to="'/' + slug">
+  <NuxtLink :to="'/' + slug">
+    <div class="container">
       <h3>{{ titulo }}</h3>
-    </NuxtLink>
-  </div>
+    </div>
+  </NuxtLink>
 </template>
 
 <script>
