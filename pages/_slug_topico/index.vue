@@ -3,7 +3,7 @@
     <HeaderComponent />
     <main>
       <div class="container">
-        <CriarPost />
+        <CriarPost v-if="this.$store.getters.isLogged" />
         <h2>{{ titulo }}</h2>
         <PostComponent
           :key="post.id"

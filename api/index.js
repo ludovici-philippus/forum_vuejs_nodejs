@@ -143,22 +143,27 @@ app.post("/criar-post", async (req, res) => {
 
   const nome = req.body.nome;
   const conteudo = req.body.conteudo;
+  const id_usuario = sess.unid;
   const slug_topico = req.body.slug_topico;
   const slug = urlSlug(nome);
 
-  const sql = await db.connect();
-  const [post_exists] = await sql.execute(
-    'SELECT * FROM `tb_posts` WHERE slug=?',
-    [slug]
-  );
-  if (post_exists.length == 0) {
-    await sql.execute(
-      'INSERT INTO `tb_posts` VALUES (null, ?, ?, ?, ?)',
-      [nome, conteudo, slug_topico, slug]
-    );
-    res.jsonp({ post_criado: true });
-  } else
+  if (id_usuario == -1) {
     res.jsonp({ post_criado: false });
+  } else {
+    const sql = await db.connect();
+    const [post_exists] = await sql.execute(
+      'SELECT * FROM `tb_posts` WHERE slug=?',
+      [slug]
+    );
+    if (post_exists.length == 0) {
+      await sql.execute(
+        'INSERT INTO `tb_posts` VALUES (null, ?, ?, ?, ?, ?)',
+        [nome, conteudo, id_usuario, slug_topico, slug]
+      );
+      res.jsonp({ post_criado: true });
+    } else
+      res.jsonp({ post_criado: false });
+  }
 })
 
 app.listen(5000, () => {
