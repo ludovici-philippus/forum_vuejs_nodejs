@@ -1,7 +1,7 @@
 <template>
   <div>
     <HeaderComponent />
-    <LazyContaForm v-if="!this.$store.getters.isLogged" />
+    <LazyContaFormComponent v-if="!this.$store.getters.isLogged" />
     <h1>Minha Conta</h1>
   </div>
 </template>

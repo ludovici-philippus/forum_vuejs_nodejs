@@ -16,7 +16,7 @@ import { naoVazio } from "../../utils/validar.js";
 import { logar } from "../../utils/conta.js";
 import { criar } from "../../utils/conta.js";
 export default {
-  name: 'form',
+  name: 'FormComponent',
   data() {
     return {
       criar_conta: false,

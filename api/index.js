@@ -138,6 +138,29 @@ app.post("/get-posts", async (req, res) => {
   res.jsonp(posts);
 });
 
+app.post("/get-post", async (req, res) => {
+  const slug_topico = req.body.slug_topico;
+  const slug_post = req.body.slug_post;
+
+  const sql = await db.connect();
+
+  let [post_info] = await sql.execute(
+    'SELECT * FROM `tb_posts` WHERE slug_topico = ? AND slug = ?',
+    [slug_topico, slug_post]
+  );
+  post_info = post_info[0];
+
+  let [usuario] = await sql.execute(
+    'SELECT nome FROM `tb_users` WHERE id = ?',
+    [post_info.id_usuario]
+  );
+  usuario = usuario[0];
+
+  post_info.usuario = usuario.nome;
+
+  res.jsonp(post_info);
+})
+
 app.post("/criar-post", async (req, res) => {
   const urlSlug = require('url-slug');
 
