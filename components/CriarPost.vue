@@ -28,7 +28,8 @@ export default {
         if (await this.$axios.$post(`${this.$store.getters.getApiPath}/criar-post`, {
           nome: nome_post,
           conteudo: conteudo_post,
-          slug_topico: this.$route.params.slug_topico
+          slug_topico: this.$route.params.slug_topico,
+          token: this.$store.getters.getToken
 
         })) {
           alert("Post criado com sucesso!");

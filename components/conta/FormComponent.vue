@@ -27,11 +27,15 @@ export default {
       const SHA256 = require("crypto-js/sha256");
       const usuario = document.querySelector("input#usuario").value;
       const senha = SHA256(document.querySelector("input#senha").value).toString();
-
       if (naoVazio([usuario, senha])) {
-        if (await logar(this.$axios, this.$store.getters.getApiPath, usuario, senha) == true) {
+        const logado_token = await logar(this.$axios, this.$store.getters.getApiPath, usuario, senha)
+          .then(response => response);
+        console.log(logado_token);
+        if (logado_token.logado == true) {
           alert("Logado com sucesso!");
           this.$store.commit("toLogin", true);
+          this.$store.commit("setToken", logado_token.token);
+          console.log(this.$store.getters.getToken);
         }
         else
           alert("Nome de Usuário ou senha incorretos!")

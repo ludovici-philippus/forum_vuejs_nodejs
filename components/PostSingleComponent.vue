@@ -1,6 +1,7 @@
 <template>
   <main>
     <PostContentComponent />
+    <ComentariosComponent />
   </main>
 </template>
 

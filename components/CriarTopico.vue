@@ -23,7 +23,8 @@ export default {
       const topico = document.querySelector("input#topico").value;
       if (naoVazio([topico])) {
         const criado = await this.$axios.$post(`${this.$store.getters.getApiPath}/criar-topico`, {
-          topico: topico
+          topico: topico,
+          token: this.$store.getters.getToken
         }).then(response => response.criado_topico);
         if (criado) {
           alert("Tópico criado com sucesso!");

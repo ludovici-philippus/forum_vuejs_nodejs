@@ -3,7 +3,7 @@ export async function logar(axios, api_path, usuario, senha) {
     usuario: usuario,
     senha: senha
   });
-  return logado.logado;
+  return logado;
 }
 
 export async function criar(axios, api_path, email, usuario, senha) {

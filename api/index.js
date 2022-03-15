@@ -1,6 +1,7 @@
 const bodyParser = require("body-parser");
 const express = require("express");
 const session = require("express-session");
+const jwt = require("jsonwebtoken");
 const db = require("./db.js");
 
 const app = express();
@@ -39,7 +40,7 @@ app.get("/", (req, res) => {
 })
 
 app.get("/is_logged", (req, res) => {
-  if (sess.unid != -1) {
+  if (jwt.verify(req.body.token, "segredo")) {
     res.jsonp({ logado: true });
   } else {
     res.jsonp({ logado: false });
@@ -55,11 +56,17 @@ app.post("/logar", async (req, res) => {
     [usuario, senha]
   );
   if (row.length == 1) {
-    sess.unid = row[0].id;
-    sess.nome = row[0].nome;
-    sess.usuario = true;
-    console.log(sess);
-    res.jsonp({ logado: true });
+
+    let token = jwt.sign({
+      unid: row[0].id,
+      nome: row[0].nome,
+      logado: true
+    },
+      "segredo",
+      {
+        expiresIn: "24h"
+      });
+    res.jsonp({ logado: true, token: token });
   } else {
     res.jsonp({ logado: false });
   }
@@ -85,7 +92,8 @@ app.post("/cadastrar", async (req, res) => {
 app.post("/criar-topico", async (req, res) => {
   const topico = req.body.topico;
   try {
-    if (sess.unid != -1) {
+    if (jwt.verify(req.body.token, "segredo").logado) {
+      console.log("Deu certo!");
       const urlSlug = require('url-slug');
       const slug_topico = urlSlug(topico);
       const sql = await db.connect();
@@ -166,11 +174,12 @@ app.post("/criar-post", async (req, res) => {
 
   const nome = req.body.nome;
   const conteudo = req.body.conteudo;
-  const id_usuario = sess.unid;
+  const dados = jwt.verify(req.body.token, "segredo");
+  const id_usuario = dados.unid;
   const slug_topico = req.body.slug_topico;
   const slug = urlSlug(nome);
 
-  if (id_usuario == -1) {
+  if (id_usuario == undefined || id_usuario.length == 0) {
     res.jsonp({ post_criado: false });
   } else {
     const sql = await db.connect();
@@ -187,6 +196,55 @@ app.post("/criar-post", async (req, res) => {
     } else
       res.jsonp({ post_criado: false });
   }
+});
+
+app.post("/comentar", async (req, res) => {
+  const comentario = req.body.comentario;
+  const slug_topico = req.body.slug_topico;
+  const token = req.body.token;
+
+  const slug_post = req.body.slug_post;
+  const dados = jwt.verify(token, "segredo");
+  const id = dados.unid;
+
+  if (id != undefined && id.length != 0) {
+    const nome = dados.nome;
+    const sql = await db.connect();
+    await sql.execute(
+      'INSERT INTO `tb_comentarios` VALUES (null, ?, ?, ?, ?, ?)',
+      [id, nome, comentario, slug_topico, slug_post]
+    );
+    res.jsonp({ comentado: true })
+  } else
+    res.jsonp({ comentado: false });
+});
+
+app.post("/get-comentarios", async (req, res) => {
+  const slug_topico = req.body.slug_topico;
+  const slug_post = req.body.slug_post;
+  const token = req.body.token;
+
+  const sql = await db.connect();
+  const [comentarios] = await sql.execute(
+    'SELECT * FROM `tb_comentarios` WHERE slug_topico = ? AND slug_post = ?',
+    [slug_topico, slug_post]
+  );
+  let id_user;
+  if (token.length != 0)
+    id_user = jwt.verify(token, "segredo").unid;
+  else
+    id_user = -1;
+
+  comentarios.filter(comentario => {
+    if (comentario.id_user == id_user) {
+      comentario.mine = true;
+      return comentario;
+    } else {
+      comentario.mine = false;
+      return comentario;
+    }
+  });
+  res.jsonp({ comentarios: comentarios });
 })
 
 app.listen(5000, () => {

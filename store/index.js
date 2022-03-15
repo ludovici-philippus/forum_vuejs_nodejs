@@ -1,5 +1,6 @@
 export const state = () => ({
   logged: false,
+  token: '',
   slug_topico: "",
   topicos: [],
   posts: [],
@@ -18,6 +19,9 @@ export const mutations = {
   },
   setSlugTopico(state, value) {
     state.slug_topico = value;
+  },
+  setToken(state, value) {
+    state.token = value;
   }
 }
 
@@ -36,5 +40,9 @@ export const getters = {
   },
   getSlugTopico(state) {
     return state.slug_topico;
+  },
+  getToken(state) {
+    return state.token;
   }
 }
+
