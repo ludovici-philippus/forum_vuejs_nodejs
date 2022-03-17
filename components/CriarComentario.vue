@@ -11,15 +11,19 @@ export default {
   name: 'CriarComentario',
   methods: {
     comentar: async function () {
-      const comentario = document.querySelector("textarea#comentario").value;
-      if (naoVazio([comentario])) {
+      const COMENTARIO = document.querySelector("textarea#comentario").value;
+      const SLUG_TOPICO = this.$route.params.slug_topico;
+      const SLUG_POST = this.$route.params.slug_post;
+      if (naoVazio([COMENTARIO])) {
         const comentou = await this.$axios.$post(`${this.$store.getters.getApiPath}/comentar`, {
-          comentario: comentario,
+          comentario: COMENTARIO,
+          slug_topico: SLUG_TOPICO,
+          slug_post: SLUG_POST,
           token: this.$store.getters.getToken
         }).then(response => response.comentado);
 
         if (comentou) {
-          alert("Comentado com sucesso!");
+          this.$emit('get_comentarios');
         } else {
           alert("Falha ao comentar!");
         }

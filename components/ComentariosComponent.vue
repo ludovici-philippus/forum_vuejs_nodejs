@@ -2,12 +2,14 @@
   <section>
     <div class="container">
       <h2>Comentários</h2>
-      <CriarComentario v-if="this.$store.getters.isLogged" />
+      <CriarComentario v-on:get_comentarios="get_comentarios" v-if="this.$store.getters.isLogged" />
       <ComentarioSingleComponent
         :key="comentario.id"
         v-for="comentario in comentarios"
         :usuario="comentario.usuario"
-        :comentario="comentario.mine"
+        :comentario="comentario.comentario"
+        :respostas_quantidade="comentario.respostas"
+        :meu="comentario.mine"
       />
     </div>
   </section>

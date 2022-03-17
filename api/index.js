@@ -1,23 +1,15 @@
 const bodyParser = require("body-parser");
 const express = require("express");
-const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const db = require("./db.js");
 
 const app = express();
+const SECRET = 'segredo';
 
 app.use(bodyParser.json())
 app.use(
   bodyParser.urlencoded({
     extended: true,
-  })
-)
-
-app.use(
-  session({
-    secret: '29190fjqweh0whq90',
-    saveUninitialized: false,
-    resave: false,
   })
 )
 
@@ -33,14 +25,12 @@ app.use(function(req, res, next) {
 })
 /*==FIM==*/
 
-var sess = { usuario: false, unid: -1 }
-
 app.get("/", (req, res) => {
   res.end("Estou aqui!");
 })
 
 app.get("/is_logged", (req, res) => {
-  if (jwt.verify(req.body.token, "segredo")) {
+  if (jwt.verify(req.body.token, SECRET)) {
     res.jsonp({ logado: true });
   } else {
     res.jsonp({ logado: false });
@@ -62,7 +52,7 @@ app.post("/logar", async (req, res) => {
       nome: row[0].nome,
       logado: true
     },
-      "segredo",
+      SECRET,
       {
         expiresIn: "24h"
       });
@@ -92,7 +82,7 @@ app.post("/cadastrar", async (req, res) => {
 app.post("/criar-topico", async (req, res) => {
   const topico = req.body.topico;
   try {
-    if (jwt.verify(req.body.token, "segredo").logado) {
+    if (jwt.verify(req.body.token, SECRET).logado) {
       console.log("Deu certo!");
       const urlSlug = require('url-slug');
       const slug_topico = urlSlug(topico);
@@ -174,7 +164,7 @@ app.post("/criar-post", async (req, res) => {
 
   const nome = req.body.nome;
   const conteudo = req.body.conteudo;
-  const dados = jwt.verify(req.body.token, "segredo");
+  const dados = jwt.verify(req.body.token, SECRET);
   const id_usuario = dados.unid;
   const slug_topico = req.body.slug_topico;
   const slug = urlSlug(nome);
@@ -204,17 +194,19 @@ app.post("/comentar", async (req, res) => {
   const token = req.body.token;
 
   const slug_post = req.body.slug_post;
-  const dados = jwt.verify(token, "segredo");
-  const id = dados.unid;
-
-  if (id != undefined && id.length != 0) {
-    const nome = dados.nome;
-    const sql = await db.connect();
-    await sql.execute(
-      'INSERT INTO `tb_comentarios` VALUES (null, ?, ?, ?, ?, ?)',
-      [id, nome, comentario, slug_topico, slug_post]
-    );
-    res.jsonp({ comentado: true })
+  if (token != '' && token.length != 0) {
+    const dados = jwt.verify(token, SECRET);
+    const id = dados.unid;
+    if (id != undefined && id.length != 0) {
+      const nome = dados.nome;
+      const sql = await db.connect();
+      await sql.execute(
+        'INSERT INTO `tb_comentarios` VALUES (null, ?, ?, ?, ?, ?, 0)',
+        [id, nome, comentario, slug_topico, slug_post]
+      );
+      res.jsonp({ comentado: true })
+    } else
+      res.jsonp({ comentado: false });
   } else
     res.jsonp({ comentado: false });
 });
@@ -231,7 +223,7 @@ app.post("/get-comentarios", async (req, res) => {
   );
   let id_user;
   if (token.length != 0)
-    id_user = jwt.verify(token, "segredo").unid;
+    id_user = jwt.verify(token, SECRET).unid;
   else
     id_user = -1;
 
@@ -245,6 +237,108 @@ app.post("/get-comentarios", async (req, res) => {
     }
   });
   res.jsonp({ comentarios: comentarios });
+});
+
+app.post("/deletar", async (req, res) => {
+  const ID = req.body.id;
+  const TOKEN = req.body.token;
+  const SLUG_POST = req.body.slug_post;
+  const SLUG_TOPICO = req.body.slug_topico;
+
+  try {
+    const ID_USER = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+
+    await SQL.execute(
+      'DELETE FROM `tb_respostas` WHERE id_comentario=?',
+      [ID]
+    )
+    await SQL.execute(
+      'DELETE FROM `tb_comentarios` WHERE id=? AND id_user=? AND slug_topico=? AND slug_post=?',
+      [ID, ID_USER, SLUG_TOPICO, SLUG_POST]
+    )
+    res.jsonp({ deletado: true });
+  } catch (err) {
+    res.jsonp({ deletado: false });
+  }
+});
+
+app.post("/responder-comentario", async (req, res) => {
+  const ID_COMENTARIO = req.body.id_comentario;
+  const RESPOSTA = req.body.resposta;
+  const TOKEN = req.body.token;
+
+  try {
+    const DADOS = jwt.verify(TOKEN, SECRET);
+    const ID_USER = DADOS.unid;
+    const NOME = DADOS.nome;
+
+    const SQL = await db.connect();
+
+    await SQL.execute(
+      'UPDATE `tb_comentarios` SET respostas=respostas+1 WHERE id=?',
+      [ID_COMENTARIO]
+    );
+    await SQL.execute(
+      'INSERT INTO `tb_respostas` VALUES (null, ?, ?, ?, ?)',
+      [ID_COMENTARIO, ID_USER, NOME, RESPOSTA]
+    );
+    res.jsonp({ respondido: true });
+  } catch {
+    res.jsonp({ respondido: false });
+  }
+});
+
+app.post("/get-respostas", async (req, res) => {
+  const ID_COMENTARIO = req.body.id_comentario;
+  const TOKEN = req.body.token;
+  let USER_ID = -1;
+  if (TOKEN != '' || TOKEN.length != 0)
+    USER_ID = jwt.verify(TOKEN, SECRET).unid;
+
+  try {
+    const SQL = await db.connect();
+    const [RESPOSTAS] = await SQL.execute(
+      'SELECT * FROM `tb_respostas` WHERE id_comentario=?',
+      [ID_COMENTARIO]
+    );
+
+    if (USER_ID != -1) {
+      RESPOSTAS.filter(resposta => {
+        if (resposta.id_usuario == USER_ID) {
+          resposta.mine = true;
+          return resposta;
+        }
+        resposta.mine = false;
+        return resposta;
+      })
+    }
+    res.jsonp({ respostas: RESPOSTAS });
+  } catch (err) {
+    res.jsonp({ respostas: false });
+  }
+});
+
+app.post("/deletar-resposta", async (req, res) => {
+  const ID_COMENTARIO = req.body.id_comentario;
+  const ID_RESPOSTA = req.body.id_resposta;
+  const TOKEN = req.body.token;
+
+  try {
+    const USER_ID = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+    await SQL.execute(
+      'UPDATE `tb_comentarios` SET respostas=respostas-1 WHERE id=?',
+      [ID_COMENTARIO]
+    );
+    await SQL.execute(
+      'DELETE FROM `tb_respostas` WHERE id=? AND id_usuario=?',
+      [ID_RESPOSTA, USER_ID]
+    );
+    res.jsonp({ deletado: true });
+  } catch (err) {
+    res.jsonp({ deletado: false });
+  }
 })
 
 app.listen(5000, () => {

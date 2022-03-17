@@ -30,12 +30,10 @@ export default {
       if (naoVazio([usuario, senha])) {
         const logado_token = await logar(this.$axios, this.$store.getters.getApiPath, usuario, senha)
           .then(response => response);
-        console.log(logado_token);
         if (logado_token.logado == true) {
           alert("Logado com sucesso!");
           this.$store.commit("toLogin", true);
           this.$store.commit("setToken", logado_token.token);
-          console.log(this.$store.getters.getToken);
         }
         else
           alert("Nome de Usuário ou senha incorretos!")
