@@ -2,7 +2,11 @@
   <section>
     <div class="container">
       <h2>Comentários</h2>
-      <CriarComentario v-on:get_comentarios="get_comentarios" v-if="this.$store.getters.isLogged" />
+      <CriarComentario
+        v-on:get_comentarios="get_comentarios"
+        v-if="this.$store.getters.isLogged"
+        :id_post="id_post"
+      />
       <ComentarioSingleComponent
         :key="comentario.id"
         v-for="comentario in comentarios"
@@ -23,11 +27,13 @@ export default {
       comentarios: []
     }
   },
+  props: {
+    id_post: Number,
+  },
   methods: {
     get_comentarios: async function () {
       const comentarios = await this.$axios.$post(`${this.$store.getters.getApiPath}/get-comentarios`, {
-        slug_topico: this.$route.params.slug_topico,
-        slug_post: this.$route.params.slug_post,
+        id: this.id_post,
         token: this.$store.getters.getToken
       }).then(response => response.comentarios);
       this.comentarios = comentarios;

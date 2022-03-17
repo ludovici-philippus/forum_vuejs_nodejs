@@ -117,13 +117,14 @@ app.get("/get-topicos", async (req, res) => {
 });
 
 app.post("/get-topico", async (req, res) => {
-  const slug_topico = req.body.slug;
-  const sql = await db.connect();
-  const [topico] = await sql.execute(
+  const SLUG_TOPICO = req.body.slug;
+  const SQL = await db.connect();
+  const [TOPICO] = await SQL.execute(
     'SELECT * FROM `tb_topicos` WHERE slug=?',
-    [slug_topico]
+    [SLUG_TOPICO]
   );
-  res.jsonp(topico);
+
+  res.jsonp(TOPICO);
 });
 
 app.post("/get-posts", async (req, res) => {
@@ -137,26 +138,37 @@ app.post("/get-posts", async (req, res) => {
 });
 
 app.post("/get-post", async (req, res) => {
-  const slug_topico = req.body.slug_topico;
-  const slug_post = req.body.slug_post;
+  const SLUG_TOPICO = req.body.slug_topico;
+  const SLUG_POST = req.body.slug_post;
+  const TOKEN = req.body.token;
+  let USER_ID = -1;
+  if (TOKEN != undefined && TOKEN.length != 0)
+    USER_ID = jwt.verify(TOKEN, SECRET).unid;
+  const SQL = await db.connect();
 
-  const sql = await db.connect();
-
-  let [post_info] = await sql.execute(
+  let [POST_INFO] = await SQL.execute(
     'SELECT * FROM `tb_posts` WHERE slug_topico = ? AND slug = ?',
-    [slug_topico, slug_post]
+    [SLUG_TOPICO, SLUG_POST]
   );
-  post_info = post_info[0];
+  POST_INFO = POST_INFO[0];
 
-  let [usuario] = await sql.execute(
+  let [USUARIO] = await SQL.execute(
     'SELECT nome FROM `tb_users` WHERE id = ?',
-    [post_info.id_usuario]
+    [POST_INFO.id_usuario]
   );
-  usuario = usuario[0];
+  USUARIO = USUARIO[0];
 
-  post_info.usuario = usuario.nome;
+  if (USER_ID != -1) {
+    if (POST_INFO.id_usuario == USER_ID) {
+      POST_INFO.mine = true;
+    } else {
+      POST_INFO.mine = false;
+    }
+  }
 
-  res.jsonp(post_info);
+  POST_INFO.usuario = USUARIO.nome;
+
+  res.jsonp(POST_INFO);
 })
 
 app.post("/criar-post", async (req, res) => {
@@ -190,10 +202,9 @@ app.post("/criar-post", async (req, res) => {
 
 app.post("/comentar", async (req, res) => {
   const comentario = req.body.comentario;
-  const slug_topico = req.body.slug_topico;
+  const id_post = req.body.id;
   const token = req.body.token;
 
-  const slug_post = req.body.slug_post;
   if (token != '' && token.length != 0) {
     const dados = jwt.verify(token, SECRET);
     const id = dados.unid;
@@ -201,8 +212,8 @@ app.post("/comentar", async (req, res) => {
       const nome = dados.nome;
       const sql = await db.connect();
       await sql.execute(
-        'INSERT INTO `tb_comentarios` VALUES (null, ?, ?, ?, ?, ?, 0)',
-        [id, nome, comentario, slug_topico, slug_post]
+        'INSERT INTO `tb_comentarios` VALUES (null, ?, ?, ?, ?, 0)',
+        [id, nome, comentario, id_post]
       );
       res.jsonp({ comentado: true })
     } else
@@ -212,14 +223,13 @@ app.post("/comentar", async (req, res) => {
 });
 
 app.post("/get-comentarios", async (req, res) => {
-  const slug_topico = req.body.slug_topico;
-  const slug_post = req.body.slug_post;
+  const id_post = req.body.id;
   const token = req.body.token;
 
   const sql = await db.connect();
   const [comentarios] = await sql.execute(
-    'SELECT * FROM `tb_comentarios` WHERE slug_topico = ? AND slug_post = ?',
-    [slug_topico, slug_post]
+    'SELECT * FROM `tb_comentarios` WHERE id_post=?',
+    [id_post]
   );
   let id_user;
   if (token.length != 0)
@@ -242,8 +252,6 @@ app.post("/get-comentarios", async (req, res) => {
 app.post("/deletar", async (req, res) => {
   const ID = req.body.id;
   const TOKEN = req.body.token;
-  const SLUG_POST = req.body.slug_post;
-  const SLUG_TOPICO = req.body.slug_topico;
 
   try {
     const ID_USER = jwt.verify(TOKEN, SECRET).unid;
@@ -254,8 +262,8 @@ app.post("/deletar", async (req, res) => {
       [ID]
     )
     await SQL.execute(
-      'DELETE FROM `tb_comentarios` WHERE id=? AND id_user=? AND slug_topico=? AND slug_post=?',
-      [ID, ID_USER, SLUG_TOPICO, SLUG_POST]
+      'DELETE FROM `tb_comentarios` WHERE id=? AND id_user=?',
+      [ID, ID_USER]
     )
     res.jsonp({ deletado: true });
   } catch (err) {
@@ -339,7 +347,104 @@ app.post("/deletar-resposta", async (req, res) => {
   } catch (err) {
     res.jsonp({ deletado: false });
   }
-})
+});
+
+app.post("/deletar-post", async (req, res) => {
+  const ID = req.body.id;
+  const TOKEN = req.body.token;
+  try {
+    const USER_ID = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+
+    const [COMENTARIOS] = await SQL.execute(
+      'SELECT * FROM `tb_comentarios` WHERE id_post=?',
+      [ID]
+    );
+
+    COMENTARIOS.forEach(async (comentario) => {
+      await SQL.execute(
+        'DELETE FROM `tb_respostas` WHERE id_comentario=?',
+        [comentario.id]
+      )
+    });
+
+    await SQL.execute(
+      'DELETE FROM `tb_comentarios` WHERE id_post=?',
+      [ID]
+    );
+
+    await SQL.execute(
+      'DELETE FROM `tb_seguidores` WHERE id_post=?',
+      [ID]
+    );
+
+    await SQL.execute(
+      'DELETE FROM `tb_posts` WHERE id=? AND id_usuario=?',
+      [ID, USER_ID]
+    );
+    res.jsonp({ deletado: true });
+  } catch (err) {
+    res.jsonp({ deletado: false });
+  }
+});
+
+app.post("/seguir", async (req, res) => {
+  const ID_POST = req.body.id_post;
+  const TOKEN = req.body.token;
+  try {
+    const USER_ID = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+
+    await SQL.execute(
+      'INSERT INTO `tb_seguidores` VALUES (null, ?, ?)',
+      [USER_ID, ID_POST]
+    );
+
+    res.jsonp({ seguiu: true });
+  } catch (err) {
+    console.log(err);
+    res.jsonp({ seguiu: false });
+  }
+});
+
+app.post("/seguindo", async (req, res) => {
+  const ID_POST = req.body.id_post;
+  const TOKEN = req.body.token;
+  try {
+    const USER_ID = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+
+    const [SEGUINDO] = await SQL.execute(
+      'SELECT * FROM `tb_seguidores` WHERE id_user=? AND id_post=?',
+      [USER_ID, ID_POST]
+    );
+
+    if (SEGUINDO.length == 1)
+      res.jsonp({ seguindo: true });
+    else
+      res.jsonp({ seguindo: false });
+  } catch (err) {
+    res.jsonp({ seguindo: false });
+  }
+});
+
+app.post("/parar-seguir", async (req, res) => {
+  const ID_POST = req.body.id_post;
+  const TOKEN = req.body.token;
+  try {
+    const USER_ID = jwt.verify(TOKEN, SECRET).unid;
+    const SQL = await db.connect();
+
+    await SQL.execute(
+      'DELETE FROM `tb_seguidores` WHERE id_user=? AND id_post=?',
+      [USER_ID, ID_POST]
+    );
+
+    res.jsonp({ parou: true });
+  } catch (err) {
+    res.jsonp({ parou: false });
+  }
+});
 
 app.listen(5000, () => {
   console.log("Servidor iniciado na porta 5000!");

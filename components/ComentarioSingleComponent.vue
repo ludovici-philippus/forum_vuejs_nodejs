@@ -71,13 +71,9 @@ export default {
     deletar: async function (event) {
       const TOKEN = this.$store.getters.getToken;
       const ID_COMENTARIO = this.$vnode.key;
-      const SLUG_POST = this.$route.params.slug_post;
-      const SLUG_TOPICO = this.$route.params.slug_topico;
       const API_PATH = this.$store.getters.getApiPath;
       const DELETADO = await this.$axios.$post(`${API_PATH}/deletar`, {
         id: ID_COMENTARIO,
-        slug_post: SLUG_POST,
-        slug_topico: SLUG_TOPICO,
         token: TOKEN
       }).
         then(response => response.deletado);

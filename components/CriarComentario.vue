@@ -9,17 +9,18 @@
 import { naoVazio } from "../utils/validar.js";
 export default {
   name: 'CriarComentario',
+  props: {
+    id_post: Number,
+  },
   methods: {
     comentar: async function () {
       const COMENTARIO = document.querySelector("textarea#comentario").value;
-      const SLUG_TOPICO = this.$route.params.slug_topico;
-      const SLUG_POST = this.$route.params.slug_post;
+      const ID = this.id_post;
       if (naoVazio([COMENTARIO])) {
         const comentou = await this.$axios.$post(`${this.$store.getters.getApiPath}/comentar`, {
           comentario: COMENTARIO,
-          slug_topico: SLUG_TOPICO,
-          slug_post: SLUG_POST,
-          token: this.$store.getters.getToken
+          token: this.$store.getters.getToken,
+          id: ID
         }).then(response => response.comentado);
 
         if (comentou) {
